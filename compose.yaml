@@ -1,0 +1,144 @@
+services:
+
+  vehicle-state:
+    build:
+      context: ./services/vehicle-state
+    ports:
+      - "8000:8000"
+    networks:
+      - central-compute-net
+    depends_on:
+      - diagnostics
+
+  diagnostics:
+    build:
+      context: ./services/diagnostics
+    networks:
+      - central-compute-net
+    depends_on:
+      - zone-gateway-a
+      - zone-gateway-b
+
+  zone-gateway-a:
+    build:
+      context: ./services/zone-gateway-a
+    networks:
+      - central-compute-net
+      - zone-a-net
+    depends_on:
+      - battery-sensor
+
+  zone-gateway-b:
+    build:
+      context: ./services/zone-gateway-b
+    networks:
+      - central-compute-net
+      - zone-b-net
+    depends_on:
+      - thermal-sensor
+
+  battery-sensor:
+    build:
+      context: ./services/battery-sensor
+    networks:
+      - zone-a-net
+
+  thermal-sensor:
+    build:
+      context: ./services/thermal-sensor
+    networks:
+      - zone-b-net
+
+  experiment-controller:
+    build:
+      context: ./experiment-controller
+    networks:
+      - central-compute-net
+    depends_on:
+      - vehicle-state
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.159.0
+    command:
+      - "--config=/etc/otelcol-contrib/config.yaml"
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    networks:
+      - central-compute-net
+      - zone-a-net
+      - zone-b-net
+      - observability-net
+    depends_on:
+      - tempo
+      - loki
+
+  tempo:
+    image: grafana/tempo:2.9.0
+    command:
+      - "-config.file=/etc/tempo.yaml"
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    networks:
+      - observability-net
+
+  prometheus:
+    image: prom/prometheus:v3.8.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - observability-net
+    depends_on:
+      - otel-collector
+
+  loki:
+    image: grafana/loki:3.6.3
+    command:
+      - "-config.file=/etc/loki/local-config.yaml"
+    volumes:
+      - ./observability/loki.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - observability-net
+
+  grafana:
+    image: grafana/grafana:12.3.5
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - observability-net
+    depends_on:
+      - tempo
+      - prometheus
+      - loki
+
+
+networks:
+
+  central-compute-net:
+    driver: bridge
+
+  zone-a-net:
+    driver: bridge
+
+  zone-b-net:
+    driver: bridge
+
+  observability-net:
+    driver: bridge
+
+
+volumes:
+
+  tempo-data:
+
+  prometheus-data:
+
+  loki-data:
+
+  grafana-data:
