@@ -1,6 +1,6 @@
 # SDV Zonal Observability Testbed
 
-A containerized miniature Software-Defined Vehicle (SDV) zonal testbed for hands-on experimentation with distributed service communication, multimodal observability, runtime dependency reconstruction, Service-Level Indicator (SLI) / Service-Level Objective (SLO) monitoring, alerting, and controlled service degradation.
+A containerized miniature Software-Defined Vehicle (SDV) testbed for hands-on experimentation with distributed service communication, multimodal observability, runtime dependency reconstruction, Service-Level Indicator (SLI) / Service-Level Objective (SLO) monitoring, alerting, and controlled service degradation.
 
 The environment uses Docker, OpenTelemetry, Prometheus, Grafana Tempo, Grafana Loki, and Grafana.
 
@@ -8,37 +8,47 @@ The environment uses Docker, OpenTelemetry, Prometheus, Grafana Tempo, Grafana L
 
 ---
 
-## 1. Overview
+## 1. Testbed at a Glance
 
-The testbed implements a simplified zonal SDV architecture consisting of:
+The testbed implements a simplified zonal SDV architecture on a single development computer. Central software functions communicate through two logical zonal paths, while a continuous synthetic workload exercises the complete distributed request path.
 
-- two central software services;
-- two zonal gateway services;
-- two zonal sensor simulators;
-- a continuous synthetic workload generator; and
-- a complete observability stack.
+The project demonstrates:
 
-Synthetic vehicle and sensor states evolve over time while the Experiment Controller continuously exercises the distributed Vehicle Status request path.
+- containerized distributed software components representing selected SDV roles;
+- logical central and zonal communication domains;
+- OpenTelemetry metrics, logs, and distributed traces;
+- Prometheus, Tempo, and Loki observability backends;
+- a live Grafana operational dashboard;
+- runtime Service Graph reconstruction;
+- Vehicle Status latency SLI/SLO monitoring;
+- Grafana alerting and external webhook notification; and
+- controlled latency degradation and recovery.
 
-All six application services are instrumented with OpenTelemetry to generate metrics, distributed traces, and centralized logs.
+### Miniature Zonal Testbed Architecture
 
-The completed testbed additionally supports:
+![Pre-DreamKit Zonal Testbed Architecture](docs/images/testbed-architecture.png)
 
-- runtime Service Graph generation from distributed traces;
-- a Vehicle Status latency SLI;
-- an experimental latency SLO;
-- Grafana alerting;
-- external webhook notification;
-- controlled latency injection at Zone Gateway A; and
-- recovery and alert-resolution experiments.
+The figure shows the logical architecture implemented for the local testbed. Vehicle State and Diagnostics represent central software/service roles, while Zone Gateway A and Zone Gateway B are software representations of zonal gateway roles. The Battery Sensor and Thermal Sensor similarly provide software simulations of vehicle-facing end nodes.
 
-The project provides practical preparation for later SDV and causal Root Cause Analysis (RCA) experiments on a more realistic platform.
+All of these components are implemented as Python/FastAPI services so that the complete distributed path can execute on one development computer. This is an implementation abstraction rather than a claim about how physical gateways, zone controllers, ECUs, or sensors are implemented in a production SDV.
+
+### Grafana Observability Dashboard
+
+![SDV Zonal Observability Dashboard](docs/images/grafana-dashboard.png)
+
+The final Grafana dashboard provides a unified operational view of synthetic vehicle state, software-resource behaviour, continuous workload, end-to-end service performance, and Vehicle Status latency SLI/SLO monitoring.
+
+### Runtime Service Dependencies
+
+![Runtime Service Graph](docs/images/runtime-service-graph.png)
+
+The Runtime Service Graph is reconstructed from observed distributed trace relationships. It exposes the executed dependency path from Vehicle State through Diagnostics and the two logical zonal branches. It represents observed runtime communication dependencies and should not be interpreted as a causal graph.
 
 ---
 
-## 2. Application Architecture
+## 2. Testbed Architecture and Component Roles
 
-The distributed application path is:
+The distributed testbed path is:
 
 ```text
 Continuous Synthetic Workload
@@ -57,20 +67,22 @@ Battery        Thermal
 Sensor         Sensor
 ```
 
-`Diagnostics` requests information from the two zonal branches concurrently.
+Diagnostics requests information from the two zonal branches concurrently.
 
-### Application services
+### Testbed software components and represented SDV roles
 
-| Service | Role |
+| Testbed component | Represented role |
 |---|---|
-| Vehicle State | Top-level Vehicle Status service and selected synthetic vehicle state |
-| Diagnostics | Coordinates and aggregates the two zonal requests |
-| Zone Gateway A | Logical gateway between central compute and Zone A |
-| Zone Gateway B | Logical gateway between central compute and Zone B |
-| Battery Sensor | Provides synthetic battery-state information |
-| Thermal Sensor | Provides synthetic thermal-state information |
+| Vehicle State | Central software/application service |
+| Diagnostics | Central diagnostic software/service |
+| Zone Gateway A | Software representation of a Zone A gateway role |
+| Zone Gateway B | Software representation of a Zone B gateway role |
+| Battery Sensor | Software simulation of a Zone A vehicle-facing sensor/end node |
+| Thermal Sensor | Software simulation of a Zone B vehicle-facing sensor/end node |
 
-The `experiment-controller` is separate from the six application services. It generates a continuous synthetic workload by requesting the Vehicle Status endpoint approximately once every two seconds.
+> **Important:** The six components above are implemented as Python/FastAPI services for the purpose of creating an executable distributed demonstration on one development computer. Their implementation technology should not be confused with the physical or logical implementation of corresponding roles in a real SDV.
+
+The `experiment-controller` is separate from these six testbed components. It generates the continuous synthetic workload by requesting the Vehicle Status endpoint approximately once every two seconds.
 
 ---
 
@@ -168,7 +180,7 @@ Inside a container, `localhost` refers to that container itself and should not b
 
 ## 6. OpenTelemetry Observability Pipeline
 
-All six application services use OpenTelemetry instrumentation.
+All six testbed software components use OpenTelemetry instrumentation.
 
 Each service defines a distinct `service.name`, allowing its telemetry to be identified consistently across metrics, logs, and traces.
 
