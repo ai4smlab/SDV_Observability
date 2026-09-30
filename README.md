@@ -531,17 +531,36 @@ Check container status:
 docker compose ps
 ```
 
-The Vehicle Status endpoint is available at:
+### Access the Running Testbed
 
-```text
-http://localhost:8000/vehicle/status
-```
+Once the containers are running, the top-level Vehicle Status endpoint is available at:
+
+[http://localhost:8000/vehicle/status](http://localhost:8000/vehicle/status)
+
+Opening this endpoint returns the aggregated Vehicle Status response produced through the distributed testbed path.
+
+The Vehicle State FastAPI interactive API documentation is available at:
+
+[http://localhost:8000/docs](http://localhost:8000/docs)
 
 Grafana is available at:
 
-```text
-http://localhost:3000
-```
+[http://localhost:3000](http://localhost:3000)
+
+From Grafana, the testbed can be investigated through:
+
+- the **SDV Zonal Observability** dashboard;
+- **Explore** for direct Prometheus, Tempo, and Loki queries;
+- **Drilldown → Metrics** for metric exploration;
+- **Drilldown → Traces** for distributed tracing;
+- **Service structure** for the runtime Service Graph; and
+- **Alerting** for the Vehicle Status latency SLO rule.
+
+The Experiment Controller continuously generates Vehicle Status requests, so the observability environment begins receiving fresh activity automatically after the containers start.
+
+> **Note:** `localhost` refers to the computer on which the testbed is running. These links become available only after the corresponding Docker containers have been started. Port `3000` is commonly used by local Grafana installations, so another local project using Grafana may use the same URL when that project is running instead.
+
+### Useful Runtime Commands
 
 Follow the continuous workload:
 
@@ -549,7 +568,7 @@ Follow the continuous workload:
 docker compose logs -f experiment-controller
 ```
 
-Inspect a service:
+Inspect recent logs from an individual service:
 
 ```bash
 docker compose logs --tail 20 <service-name>
@@ -561,7 +580,7 @@ Stop the environment:
 docker compose down
 ```
 
-After a normal computer or Docker Desktop restart, existing containers can usually be restarted with:
+After a normal computer or Docker Desktop restart, existing containers can usually be restarted without rebuilding:
 
 ```bash
 docker compose up -d
