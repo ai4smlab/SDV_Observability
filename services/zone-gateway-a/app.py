@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 import requests
 import time
 import logging
+import os
 
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.resources import Resource
@@ -23,12 +24,31 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 
 
+# -------------------------------------------------
+# Shared OpenTelemetry resource
+# -------------------------------------------------
+
 resource = Resource.create({
     "service.name": "zone-gateway-a"
 })
 
 
+# -------------------------------------------------
+# Controlled latency intervention
+#
+# Default: 0 ms (normal operation)
+# Example fault experiment: 500 ms
+# -------------------------------------------------
+
+GATEWAY_A_DELAY_MS = int(
+    os.getenv("GATEWAY_A_DELAY_MS", "0")
+)
+
+
+# -------------------------------------------------
 # Tracing
+# -------------------------------------------------
+
 tracer_provider = TracerProvider(resource=resource)
 trace.set_tracer_provider(tracer_provider)
 
@@ -42,7 +62,10 @@ tracer_provider.add_span_processor(
 )
 
 
+# -------------------------------------------------
 # Metrics
+# -------------------------------------------------
+
 metric_reader = PeriodicExportingMetricReader(
     OTLPMetricExporter(
         endpoint="http://otel-collector:4317",
@@ -78,7 +101,10 @@ gateway_a_duration = meter.create_histogram(
 )
 
 
+# -------------------------------------------------
 # Logging
+# -------------------------------------------------
+
 logger_provider = LoggerProvider(resource=resource)
 set_logger_provider(logger_provider)
 
@@ -93,25 +119,34 @@ logger_provider.add_log_record_processor(
 
 logger = logging.getLogger("zone-gateway-a")
 logger.setLevel(logging.INFO)
+
 logger.addHandler(
     LoggingHandler(
         level=logging.INFO,
         logger_provider=logger_provider
     )
 )
+
 logger.propagate = False
 
 
-# Application
+# -------------------------------------------------
+# FastAPI application
+# -------------------------------------------------
+
 app = FastAPI(
     title="Zone Gateway A",
-    description="Simulated Zone A gateway for the miniature zonal SDV architecture",
+    description=(
+        "Simulated Zone A gateway for the miniature "
+        "zonal SDV architecture"
+    ),
     version="1.0.0"
 )
 
 
 @app.get("/")
 def home():
+
     return {
         "service": "zone-gateway-a",
         "zone": "A",
@@ -125,9 +160,27 @@ def get_zone_a_battery():
     start_time = time.perf_counter()
     gateway_a_requests.add(1)
 
-    logger.info("Zone A battery request started")
+    logger.info(
+        "Zone A battery request started"
+    )
+
+    # ---------------------------------------------
+    # Controlled latency intervention
+    # ---------------------------------------------
+
+    if GATEWAY_A_DELAY_MS > 0:
+
+        logger.warning(
+            "Artificial Zone A latency intervention active: %d ms",
+            GATEWAY_A_DELAY_MS
+        )
+
+        time.sleep(
+            GATEWAY_A_DELAY_MS / 1000
+        )
 
     try:
+
         response = requests.get(
             "http://battery-sensor:8003/battery/data",
             timeout=2
@@ -158,16 +211,21 @@ def get_zone_a_battery():
 
         raise HTTPException(
             status_code=503,
-            detail=f"Battery Sensor Service unavailable: {exc}"
+            detail=(
+                f"Battery Sensor Service unavailable: {exc}"
+            )
         )
 
     finally:
 
         duration_ms = (
-            time.perf_counter() - start_time
+            time.perf_counter()
+            - start_time
         ) * 1000
 
-        gateway_a_duration.record(duration_ms)
+        gateway_a_duration.record(
+            duration_ms
+        )
 
         logger.info(
             "Zone A gateway request completed in %.2f ms",

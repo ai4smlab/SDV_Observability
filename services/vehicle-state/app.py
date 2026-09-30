@@ -15,6 +15,10 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
 from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.view import (
+    View,
+    ExplicitBucketHistogramAggregation,
+)
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
@@ -65,7 +69,32 @@ metric_reader = PeriodicExportingMetricReader(
 
 meter_provider = MeterProvider(
     resource=resource,
-    metric_readers=[metric_reader]
+    metric_readers=[metric_reader],
+    views=[
+        View(
+            instrument_name="vehicle_status_duration",
+            aggregation=ExplicitBucketHistogramAggregation(
+                boundaries=[
+                    0,
+                    5,
+                    10,
+                    25,
+                    50,
+                    75,
+                    100,
+                    250,
+                    350,
+                    500,
+                    750,
+                    1000,
+                    2500,
+                    5000,
+                    7500,
+                    10000,
+                ]
+            ),
+        )
+    ],
 )
 
 metrics.set_meter_provider(meter_provider)

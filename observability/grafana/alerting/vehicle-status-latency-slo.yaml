@@ -1,0 +1,66 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: SDV SLO Alerts
+      folder: SDV Zonal Observability
+      interval: 1m
+      rules:
+        - uid: efz1x57zj68lca
+          title: Vehicle Status Latency SLO Violation
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: efxhalg9kgdfkb
+              model:
+                datasource:
+                    type: prometheus
+                    uid: efxhalg9kgdfkb
+                editorMode: code
+                expr: "100 *\r\nsum(increase(vehicle_status_duration_milliseconds_bucket{le=\"350.0\"}[5m]))\r\n/\r\nsum(increase(vehicle_status_duration_milliseconds_count[5m]))"
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 90
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 2m
+          annotations:
+            description: The rolling 5-minute Vehicle Status latency SLI has remained below the experimental 90% SLO. A good request is defined as completing within 350 ms.
+            summary: Vehicle Status latency SLO violated
+          labels:
+            service: vehicle-state
+            severity: warning
+            slo: vehicle-status-latency
+          isPaused: false
+          notification_settings:
+            receiver: SDV SLO Webhook
